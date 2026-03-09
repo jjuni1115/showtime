@@ -1,0 +1,47 @@
+spring:
+  application:
+    name: showtime
+  datasource:
+    url: ${DB_URL:jdbc:postgresql://localhost:5432/showtime}
+    username: ${DB_USERNAME:showtime}
+    password: ${DB_PASSWORD:showtime}
+  jpa:
+    open-in-view: false
+    hibernate:
+      ddl-auto: validate
+  flyway:
+    enabled: true
+    locations: classpath:db/migration
+  servlet:
+    multipart:
+      max-file-size: 1024MB
+      max-request-size: 1024MB
+  security:
+    oauth2:
+      client:
+        registration:
+          google:
+            client-id: ${GOOGLE_CLIENT_ID:364547942373-iuus86rnhhp131bmkv2ja1e2nsftcg4r.apps.googleusercontent.com}
+            client-secret: ${GOOGLE_CLIENT_SECRET}
+            scope:
+              - profile
+              - email
+
+server:
+  port: 8080
+
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health,info
+
+app:
+  cors:
+    allowed-origins:
+      - ${FRONTEND_ORIGIN:http://localhost:3000}
+  invite:
+    base-url: ${INVITE_BASE_URL:http://localhost:3000/join}
+    expires-hours: ${INVITE_EXPIRES_HOURS:168}
+  video:
+    storage-dir: ${VIDEO_STORAGE_DIR:./storage/videos}

@@ -1,0 +1,17 @@
+.DS_Store
+.idea
+.vscode
+*.iml
+
+# JVM / Gradle
+.gradle
+.kotlin
+**/build/
+**/.gradle/
+!**/gradle/wrapper/gradle-wrapper.jar
+
+# Node / Frontend
+**/node_modules/
+**/dist/
+**/.vite/
+**/*.tsbuildinfo

@@ -1,0 +1,1015 @@
+openapi: 3.0.3
+info:
+  title: Showtime API
+  version: 1.0.0
+  description: Basketball club management backend API.
+servers:
+  - url: http://localhost:8080
+    description: Local
+security:
+  - sessionAuth: []
+
+tags:
+  - name: Health
+  - name: User
+  - name: Club
+  - name: Community
+  - name: Meeting
+  - name: Member
+  - name: Attendance
+  - name: Team
+  - name: Match
+
+paths:
+  /api/v1/ping:
+    get:
+      tags: [Health]
+      operationId: ping
+      security: []
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PingResponse'
+
+  /actuator/health:
+    get:
+      tags: [Health]
+      operationId: actuatorHealth
+      security: []
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: object
+                additionalProperties: true
+
+  /api/v1/users/me:
+    get:
+      tags: [User]
+      operationId: getMyProfile
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/MyProfileResponse'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+
+  /api/v1/clubs:
+    post:
+      tags: [Club]
+      operationId: createClub
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CreateClubRequest'
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ClubResponse'
+
+  /api/v1/clubs/my:
+    get:
+      tags: [Club]
+      operationId: getMyClubs
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/ClubResponse'
+
+  /api/v1/clubs/{clubId}/invites:
+    post:
+      tags: [Club]
+      operationId: createClubInvite
+      parameters:
+        - $ref: '#/components/parameters/ClubId'
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/InviteResponse'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+
+  /api/v1/clubs/join:
+    post:
+      tags: [Club]
+      operationId: joinClubByInviteCode
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/JoinClubRequest'
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ClubResponse'
+
+  /api/v1/clubs/{clubId}/posts:
+    post:
+      tags: [Community]
+      operationId: createPost
+      parameters:
+        - $ref: '#/components/parameters/ClubId'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CreatePostRequest'
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PostResponse'
+    get:
+      tags: [Community]
+      operationId: getPosts
+      parameters:
+        - $ref: '#/components/parameters/ClubId'
+        - name: limit
+          in: query
+          schema:
+            type: integer
+            minimum: 1
+            maximum: 100
+            default: 30
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/PostResponse'
+
+  /api/v1/clubs/{clubId}/meeting-schedule:
+    put:
+      tags: [Meeting]
+      operationId: upsertMeetingSchedule
+      parameters:
+        - $ref: '#/components/parameters/ClubId'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/UpsertMeetingScheduleRequest'
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/MeetingScheduleResponse'
+    get:
+      tags: [Meeting]
+      operationId: getMeetingSchedule
+      parameters:
+        - $ref: '#/components/parameters/ClubId'
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/MeetingScheduleResponse'
+
+  /api/v1/clubs/{clubId}/meetings:
+    post:
+      tags: [Meeting]
+      operationId: createMeeting
+      parameters:
+        - $ref: '#/components/parameters/ClubId'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CreateMeetingRequest'
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/MeetingResponse'
+    get:
+      tags: [Meeting]
+      operationId: getMeetings
+      parameters:
+        - $ref: '#/components/parameters/ClubId'
+        - name: from
+          in: query
+          required: true
+          schema:
+            type: string
+            format: date
+        - name: to
+          in: query
+          required: true
+          schema:
+            type: string
+            format: date
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/MeetingResponse'
+
+  /api/v1/meetings/{meetingId}/attendance/me:
+    post:
+      tags: [Meeting]
+      operationId: voteMyAttendance
+      parameters:
+        - $ref: '#/components/parameters/MeetingId'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/VoteAttendanceRequest'
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/MeetingResponse'
+
+  /api/v1/meetings/{meetingId}/attendance/guest:
+    post:
+      tags: [Meeting]
+      operationId: setGuestAttendance
+      parameters:
+        - $ref: '#/components/parameters/MeetingId'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/SetGuestAttendanceRequest'
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/MeetingResponse'
+
+  /api/v1/meetings/{meetingId}/attendance/member:
+    post:
+      tags: [Meeting]
+      operationId: setMemberAttendance
+      parameters:
+        - $ref: '#/components/parameters/MeetingId'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/SetMemberAttendanceRequest'
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/MeetingResponse'
+
+  /api/v1/members:
+    post:
+      tags: [Member]
+      operationId: createMember
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CreateMemberRequest'
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/MemberResponse'
+    get:
+      tags: [Member]
+      operationId: getMembers
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/MemberResponse'
+
+  /api/v1/attendances/{date}:
+    put:
+      tags: [Attendance]
+      operationId: upsertAttendance
+      parameters:
+        - name: date
+          in: path
+          required: true
+          schema:
+            type: string
+            format: date
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/UpsertAttendanceRequest'
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AttendanceResponse'
+    get:
+      tags: [Attendance]
+      operationId: getAttendance
+      parameters:
+        - name: date
+          in: path
+          required: true
+          schema:
+            type: string
+            format: date
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AttendanceResponse'
+
+  /api/v1/teams/generate:
+    post:
+      tags: [Team]
+      operationId: generateTeams
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/TeamGenerateRequest'
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/TeamGenerateResponse'
+
+  /api/v1/teams/generate-from-attendance:
+    post:
+      tags: [Team]
+      operationId: generateTeamsFromAttendance
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/TeamFromAttendanceRequest'
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/TeamGenerateResponse'
+
+  /api/v1/matches:
+    post:
+      tags: [Match]
+      operationId: createMatch
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CreateMatchResultRequest'
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/MatchResultResponse'
+    get:
+      tags: [Match]
+      operationId: getMatches
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/MatchResultResponse'
+
+  /api/v1/matches/{matchId}:
+    get:
+      tags: [Match]
+      operationId: getMatch
+      parameters:
+        - name: matchId
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/MatchResultResponse'
+
+  /api/v1/matches/{matchId}/videos:
+    post:
+      tags: [Match]
+      operationId: uploadMatchVideo
+      parameters:
+        - name: matchId
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      requestBody:
+        required: true
+        content:
+          multipart/form-data:
+            schema:
+              type: object
+              required: [file]
+              properties:
+                file:
+                  type: string
+                  format: binary
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/VideoMetadataResponse'
+
+  /api/v1/videos/{videoId}/download:
+    get:
+      tags: [Match]
+      operationId: downloadVideo
+      parameters:
+        - name: videoId
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        '200':
+          description: Video file
+          content:
+            application/octet-stream:
+              schema:
+                type: string
+                format: binary
+
+components:
+  securitySchemes:
+    sessionAuth:
+      type: apiKey
+      in: cookie
+      name: JSESSIONID
+
+  parameters:
+    ClubId:
+      name: clubId
+      in: path
+      required: true
+      schema:
+        type: string
+        format: uuid
+    MeetingId:
+      name: meetingId
+      in: path
+      required: true
+      schema:
+        type: string
+        format: uuid
+
+  responses:
+    BadRequest:
+      description: Bad request
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ErrorResponse'
+    Unauthorized:
+      description: Unauthorized
+
+  schemas:
+    ErrorResponse:
+      type: object
+      required: [message]
+      properties:
+        message:
+          type: string
+
+    PingResponse:
+      type: object
+      required: [message, timestamp]
+      properties:
+        message:
+          type: string
+        timestamp:
+          type: string
+          format: date-time
+
+    MyProfileResponse:
+      type: object
+      required: [id, email, displayName]
+      properties:
+        id:
+          type: string
+          format: uuid
+        email:
+          type: string
+          format: email
+        displayName:
+          type: string
+
+    MembershipRole:
+      type: string
+      enum: [ADMIN, MEMBER]
+
+    CreateClubRequest:
+      type: object
+      required: [name, homeCourt]
+      properties:
+        name:
+          type: string
+          maxLength: 120
+        homeCourt:
+          type: string
+          maxLength: 255
+        imageUrl:
+          type: string
+          maxLength: 1000
+          nullable: true
+
+    ClubResponse:
+      type: object
+      required: [id, name, homeCourt, myRole]
+      properties:
+        id:
+          type: string
+          format: uuid
+        name:
+          type: string
+        homeCourt:
+          type: string
+        imageUrl:
+          type: string
+          nullable: true
+        myRole:
+          $ref: '#/components/schemas/MembershipRole'
+
+    InviteResponse:
+      type: object
+      required: [code, inviteLink]
+      properties:
+        code:
+          type: string
+        inviteLink:
+          type: string
+        expiresAt:
+          type: string
+          format: date-time
+          nullable: true
+
+    JoinClubRequest:
+      type: object
+      required: [code]
+      properties:
+        code:
+          type: string
+
+    CreatePostRequest:
+      type: object
+      required: [content]
+      properties:
+        content:
+          type: string
+          maxLength: 2000
+
+    PostResponse:
+      type: object
+      required: [id, clubId, authorUserId, authorName, content, createdAt]
+      properties:
+        id:
+          type: string
+          format: uuid
+        clubId:
+          type: string
+          format: uuid
+        authorUserId:
+          type: string
+          format: uuid
+        authorName:
+          type: string
+        content:
+          type: string
+        createdAt:
+          type: string
+          format: date-time
+
+    DayOfWeek:
+      type: string
+      enum: [MONDAY, TUESDAY, WEDNESDAY, THURSDAY, FRIDAY, SATURDAY, SUNDAY]
+
+    AttendanceStatus:
+      type: string
+      enum: [YES, NO, MAYBE]
+
+    UpsertMeetingScheduleRequest:
+      type: object
+      required: [dayOfWeek, startTime, enabled]
+      properties:
+        dayOfWeek:
+          $ref: '#/components/schemas/DayOfWeek'
+        startTime:
+          type: string
+          format: time
+        enabled:
+          type: boolean
+
+    MeetingScheduleResponse:
+      type: object
+      required: [clubId, dayOfWeek, startTime, enabled]
+      properties:
+        clubId:
+          type: string
+          format: uuid
+        dayOfWeek:
+          $ref: '#/components/schemas/DayOfWeek'
+        startTime:
+          type: string
+          format: time
+        enabled:
+          type: boolean
+
+    CreateMeetingRequest:
+      type: object
+      required: [meetingDate]
+      properties:
+        meetingDate:
+          type: string
+          format: date
+        startTime:
+          type: string
+          format: time
+          nullable: true
+        note:
+          type: string
+          nullable: true
+
+    VoteAttendanceRequest:
+      type: object
+      required: [status]
+      properties:
+        status:
+          $ref: '#/components/schemas/AttendanceStatus'
+
+    SetGuestAttendanceRequest:
+      type: object
+      required: [guestName, status]
+      properties:
+        guestName:
+          type: string
+        status:
+          $ref: '#/components/schemas/AttendanceStatus'
+
+    SetMemberAttendanceRequest:
+      type: object
+      required: [userId, status]
+      properties:
+        userId:
+          type: string
+          format: uuid
+        status:
+          $ref: '#/components/schemas/AttendanceStatus'
+
+    MeetingAttendanceResponse:
+      type: object
+      required: [status, source]
+      properties:
+        userId:
+          type: string
+          format: uuid
+          nullable: true
+        userName:
+          type: string
+          nullable: true
+        guestName:
+          type: string
+          nullable: true
+        status:
+          $ref: '#/components/schemas/AttendanceStatus'
+        source:
+          type: string
+
+    MeetingResponse:
+      type: object
+      required: [id, clubId, meetingDate, startTime, attendances]
+      properties:
+        id:
+          type: string
+          format: uuid
+        clubId:
+          type: string
+          format: uuid
+        meetingDate:
+          type: string
+          format: date
+        startTime:
+          type: string
+          format: time
+        note:
+          type: string
+          nullable: true
+        attendances:
+          type: array
+          items:
+            $ref: '#/components/schemas/MeetingAttendanceResponse'
+
+    SkillLevel:
+      type: string
+      enum: [LOW, LOWER_MID, MID, UPPER_MID, HIGH]
+
+    Position:
+      type: string
+      enum: [GUARD, FORWARD, CENTER]
+
+    PlayStyle:
+      type: string
+      enum: [SHOOTER, SLASHER, PLAYMAKER, DEFENDER, REBOUNDER, BALANCED]
+
+    CreateMemberRequest:
+      type: object
+      required: [name, heightCm, skillLevel, position, style]
+      properties:
+        name:
+          type: string
+        heightCm:
+          type: integer
+          minimum: 130
+          maximum: 240
+        skillLevel:
+          $ref: '#/components/schemas/SkillLevel'
+        position:
+          $ref: '#/components/schemas/Position'
+        style:
+          $ref: '#/components/schemas/PlayStyle'
+
+    MemberResponse:
+      type: object
+      required: [id, name, heightCm, skillLevel, position, style, active]
+      properties:
+        id:
+          type: string
+          format: uuid
+        name:
+          type: string
+        heightCm:
+          type: integer
+        skillLevel:
+          $ref: '#/components/schemas/SkillLevel'
+        position:
+          $ref: '#/components/schemas/Position'
+        style:
+          $ref: '#/components/schemas/PlayStyle'
+        active:
+          type: boolean
+
+    UpsertAttendanceRequest:
+      type: object
+      required: [memberIds]
+      properties:
+        memberIds:
+          type: array
+          minItems: 1
+          items:
+            type: string
+            format: uuid
+
+    AttendanceResponse:
+      type: object
+      required: [date, attendees]
+      properties:
+        date:
+          type: string
+          format: date
+        attendees:
+          type: array
+          items:
+            $ref: '#/components/schemas/MemberResponse'
+
+    MemberProfile:
+      type: object
+      required: [id, name, heightCm, skillLevel, position, style]
+      properties:
+        id:
+          type: string
+        name:
+          type: string
+        heightCm:
+          type: integer
+          minimum: 130
+          maximum: 240
+        skillLevel:
+          $ref: '#/components/schemas/SkillLevel'
+        position:
+          $ref: '#/components/schemas/Position'
+        style:
+          $ref: '#/components/schemas/PlayStyle'
+
+    TeamGenerateRequest:
+      type: object
+      required: [teamNames, attendees]
+      properties:
+        teamNames:
+          type: array
+          minItems: 1
+          items:
+            type: string
+        attendees:
+          type: array
+          minItems: 1
+          items:
+            $ref: '#/components/schemas/MemberProfile'
+        previousTeamByMemberId:
+          type: object
+          additionalProperties:
+            type: string
+
+    TeamFromAttendanceRequest:
+      type: object
+      required: [attendanceDate, teamNames]
+      properties:
+        attendanceDate:
+          type: string
+          format: date
+        teamNames:
+          type: array
+          minItems: 1
+          items:
+            type: string
+        previousTeamByMemberId:
+          type: object
+          additionalProperties:
+            type: string
+
+    TeamResult:
+      type: object
+      required: [name, members, totalSkillScore, averageHeightCm, positionCounts, repeatedFromLastWeekCount]
+      properties:
+        name:
+          type: string
+        members:
+          type: array
+          items:
+            $ref: '#/components/schemas/MemberProfile'
+        totalSkillScore:
+          type: integer
+        averageHeightCm:
+          type: number
+          format: double
+        positionCounts:
+          type: object
+          additionalProperties:
+            type: integer
+        repeatedFromLastWeekCount:
+          type: integer
+
+    BalanceSummary:
+      type: object
+      required: [teamSkillGap, teamSizeGap, repeatedAssignments]
+      properties:
+        teamSkillGap:
+          type: integer
+        teamSizeGap:
+          type: integer
+        repeatedAssignments:
+          type: integer
+
+    TeamGenerateResponse:
+      type: object
+      required: [teams, summary]
+      properties:
+        teams:
+          type: array
+          items:
+            $ref: '#/components/schemas/TeamResult'
+        summary:
+          $ref: '#/components/schemas/BalanceSummary'
+
+    CreateMatchResultRequest:
+      type: object
+      required: [playedAt, teamScores]
+      properties:
+        playedAt:
+          type: string
+          format: date
+        teamScores:
+          type: object
+          additionalProperties:
+            type: integer
+            minimum: 0
+        memo:
+          type: string
+          nullable: true
+
+    VideoMetadataResponse:
+      type: object
+      required: [id, fileName, contentType, sizeBytes, uploadedAt, downloadUrl]
+      properties:
+        id:
+          type: string
+          format: uuid
+        fileName:
+          type: string
+        contentType:
+          type: string
+        sizeBytes:
+          type: integer
+          format: int64
+        uploadedAt:
+          type: string
+          format: date-time
+        downloadUrl:
+          type: string
+
+    MatchResultResponse:
+      type: object
+      required: [id, playedAt, teamScores, videos, createdAt]
+      properties:
+        id:
+          type: string
+          format: uuid
+        playedAt:
+          type: string
+          format: date
+        teamScores:
+          type: object
+          additionalProperties:
+            type: integer
+        memo:
+          type: string
+          nullable: true
+        videos:
+          type: array
+          items:
+            $ref: '#/components/schemas/VideoMetadataResponse'
+        createdAt:
+          type: string
+          format: date-time
