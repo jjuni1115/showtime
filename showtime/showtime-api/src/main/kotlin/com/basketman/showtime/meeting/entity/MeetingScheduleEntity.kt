@@ -12,7 +12,6 @@ import jakarta.persistence.GenerationType
 import jakarta.persistence.Id
 import jakarta.persistence.JoinColumn
 import jakarta.persistence.ManyToOne
-import jakarta.persistence.OneToOne
 import jakarta.persistence.Table
 import java.time.DayOfWeek
 import java.time.Instant
@@ -25,9 +24,12 @@ class MeetingScheduleEntity(
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     val id: Long? = null,
 
-    @OneToOne(fetch = FetchType.LAZY)
-    @JoinColumn(name = "club_id", nullable = false, unique = true)
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "club_id", nullable = false)
     val club: ClubEntity,
+
+    @Column(name = "name", nullable = false, length = 120)
+    var name: String,
 
     @Enumerated(EnumType.STRING)
     @Column(name = "day_of_week", nullable = false, length = 20)
@@ -35,6 +37,9 @@ class MeetingScheduleEntity(
 
     @Column(name = "start_time", nullable = false)
     var startTime: LocalTime,
+
+    @Column(name = "place", length = 255)
+    var place: String? = null,
 
     @Column(nullable = false)
     var enabled: Boolean = true,

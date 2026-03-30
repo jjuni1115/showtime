@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { computed, onMounted } from 'vue'
-import { RouterLink, RouterView, useRoute } from 'vue-router'
+import { RouterLink, RouterView, useRoute, useRouter } from 'vue-router'
 import { useConsole } from '@/composables/useConsole'
 
 const navItems = [
@@ -14,6 +14,7 @@ const navItems = [
 ]
 
 const route = useRoute()
+const router = useRouter()
 const {
   loading,
   error,
@@ -23,12 +24,18 @@ const {
   clubs,
   selectedClubId,
   refreshAll,
+  consumePendingInviteRedirect,
   onChangeClub,
 } = useConsole()
 
 const currentPath = computed(() => route.path)
 
-onMounted(refreshAll)
+onMounted(async () => {
+  await refreshAll()
+  if (consumePendingInviteRedirect()) {
+    await router.replace('/meetings')
+  }
+})
 </script>
 
 <template>

@@ -8,23 +8,47 @@ import java.time.LocalDate
 import java.time.LocalTime
 import java.util.UUID
 
-data class UpsertMeetingScheduleRequest(
+data class CreateMeetingScheduleRequest(
+    @field:NotBlank
+    val name: String,
     val dayOfWeek: DayOfWeek,
     val startTime: LocalTime,
+    val place: String? = null,
+    val enabled: Boolean = true,
+)
+
+data class UpdateMeetingScheduleRequest(
+    @field:NotBlank
+    val name: String,
+    val dayOfWeek: DayOfWeek,
+    val startTime: LocalTime,
+    val place: String? = null,
     val enabled: Boolean = true,
 )
 
 data class MeetingScheduleResponse(
+    val id: Long,
     val clubId: UUID,
+    val name: String,
     val dayOfWeek: DayOfWeek,
     val startTime: LocalTime,
+    val place: String?,
     val enabled: Boolean,
 )
 
 data class CreateMeetingRequest(
     @field:NotNull
+    val scheduleId: Long,
+    @field:NotNull
     val meetingDate: LocalDate,
-    val startTime: LocalTime? = null,
+    val note: String? = null,
+)
+
+data class UpdateMeetingRequest(
+    @field:NotNull
+    val scheduleId: Long,
+    @field:NotNull
+    val meetingDate: LocalDate,
     val note: String? = null,
 )
 
@@ -39,8 +63,11 @@ data class MeetingAttendanceResponse(
 data class MeetingResponse(
     val id: UUID,
     val clubId: UUID,
+    val scheduleId: Long?,
+    val scheduleName: String?,
     val meetingDate: LocalDate,
     val startTime: LocalTime,
+    val place: String?,
     val note: String?,
     val attendances: List<MeetingAttendanceResponse>,
 )

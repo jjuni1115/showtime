@@ -1,16 +1,17 @@
 package com.basketman.showtime.meeting.service
 
-import com.basketman.showtime.club.entity.MembershipRole
 import com.basketman.showtime.club.repository.ClubMembershipRepository
 import com.basketman.showtime.club.repository.ClubRepository
 import com.basketman.showtime.club.service.ClubService
+import com.basketman.showtime.meeting.dto.CreateMeetingScheduleRequest
 import com.basketman.showtime.meeting.dto.CreateMeetingRequest
 import com.basketman.showtime.meeting.dto.MeetingAttendanceResponse
 import com.basketman.showtime.meeting.dto.MeetingResponse
 import com.basketman.showtime.meeting.dto.MeetingScheduleResponse
 import com.basketman.showtime.meeting.dto.SetGuestAttendanceRequest
 import com.basketman.showtime.meeting.dto.SetMemberAttendanceRequest
-import com.basketman.showtime.meeting.dto.UpsertMeetingScheduleRequest
+import com.basketman.showtime.meeting.dto.UpdateMeetingScheduleRequest
+import com.basketman.showtime.meeting.dto.UpdateMeetingRequest
 import com.basketman.showtime.meeting.dto.VoteAttendanceRequest
 import com.basketman.showtime.meeting.entity.AttendanceSource
 import com.basketman.showtime.meeting.entity.MeetingAttendanceEntity
@@ -23,6 +24,7 @@ import com.basketman.showtime.user.entity.AppUserEntity
 import com.basketman.showtime.user.repository.AppUserRepository
 import org.springframework.stereotype.Service
 import org.springframework.transaction.annotation.Transactional
+import java.time.DayOfWeek
 import java.time.Instant
 import java.time.LocalDate
 import java.util.UUID
@@ -38,43 +40,65 @@ class MeetingService(
     private val meetingAttendanceRepository: MeetingAttendanceRepository,
 ) {
     @Transactional
-    fun upsertSchedule(
+    fun createSchedule(
         clubId: UUID,
         currentUser: AppUserEntity,
-        request: UpsertMeetingScheduleRequest,
+        request: CreateMeetingScheduleRequest,
     ): MeetingScheduleResponse {
         clubService.ensureAdmin(clubId, currentUser.id)
         val club = clubRepository.findById(clubId)
             .orElseThrow { IllegalArgumentException("club not found: $clubId") }
 
-        val existing = meetingScheduleRepository.findByClubId(clubId)
-        val saved = if (existing == null) {
-            meetingScheduleRepository.save(
-                MeetingScheduleEntity(
-                    club = club,
-                    dayOfWeek = request.dayOfWeek,
-                    startTime = request.startTime,
-                    enabled = request.enabled,
-                    updatedByUser = currentUser,
-                    updatedAt = Instant.now(),
-                ),
-            )
-        } else {
-            existing.dayOfWeek = request.dayOfWeek
-            existing.startTime = request.startTime
-            existing.enabled = request.enabled
-            existing.updatedByUser = currentUser
-            existing.updatedAt = Instant.now()
-            meetingScheduleRepository.save(existing)
-        }
-
+        val saved = meetingScheduleRepository.save(
+            MeetingScheduleEntity(
+                club = club,
+                name = request.name.trim(),
+                dayOfWeek = request.dayOfWeek,
+                startTime = request.startTime,
+                place = request.place?.trim()?.ifBlank { null },
+                enabled = request.enabled,
+                updatedByUser = currentUser,
+                updatedAt = Instant.now(),
+            ),
+        )
         return saved.toResponse()
     }
 
     @Transactional(readOnly = true)
-    fun getSchedule(clubId: UUID, currentUser: AppUserEntity): MeetingScheduleResponse? {
+    fun getSchedules(clubId: UUID, currentUser: AppUserEntity): List<MeetingScheduleResponse> {
         clubService.ensureMember(clubId, currentUser.id)
-        return meetingScheduleRepository.findByClubId(clubId)?.toResponse()
+        return meetingScheduleRepository.findAllByClubIdOrderByIdAsc(clubId)
+            .map { it.toResponse() }
+    }
+
+    @Transactional
+    fun updateSchedule(
+        clubId: UUID,
+        scheduleId: Long,
+        currentUser: AppUserEntity,
+        request: UpdateMeetingScheduleRequest,
+    ): MeetingScheduleResponse {
+        clubService.ensureAdmin(clubId, currentUser.id)
+        val existing = meetingScheduleRepository.findByIdAndClubId(scheduleId, clubId)
+            ?: throw IllegalArgumentException("meeting schedule not found: $scheduleId")
+
+        existing.name = request.name.trim()
+        existing.dayOfWeek = request.dayOfWeek
+        existing.startTime = request.startTime
+        existing.place = request.place?.trim()?.ifBlank { null }
+        existing.enabled = request.enabled
+        existing.updatedByUser = currentUser
+        existing.updatedAt = Instant.now()
+
+        return meetingScheduleRepository.save(existing).toResponse()
+    }
+
+    @Transactional
+    fun deleteSchedule(clubId: UUID, scheduleId: Long, currentUser: AppUserEntity) {
+        clubService.ensureAdmin(clubId, currentUser.id)
+        val existing = meetingScheduleRepository.findByIdAndClubId(scheduleId, clubId)
+            ?: throw IllegalArgumentException("meeting schedule not found: $scheduleId")
+        meetingScheduleRepository.delete(existing)
     }
 
     @Transactional
@@ -84,15 +108,17 @@ class MeetingService(
         val club = clubRepository.findById(clubId)
             .orElseThrow { IllegalArgumentException("club not found: $clubId") }
 
-        val schedule = meetingScheduleRepository.findByClubId(clubId)
-        val meetingStartTime = request.startTime ?: schedule?.startTime
-            ?: throw IllegalArgumentException("startTime is required when no schedule exists")
+        val schedule = meetingScheduleRepository.findByIdAndClubId(request.scheduleId, clubId)
+            ?: throw IllegalArgumentException("meeting schedule not found: ${request.scheduleId}")
+        validateMeetingDateBySchedule(schedule.dayOfWeek, request.meetingDate)
 
         val meeting = meetingRepository.save(
             MeetingEntity(
                 club = club,
+                schedule = schedule,
                 meetingDate = request.meetingDate,
-                startTime = meetingStartTime,
+                startTime = schedule.startTime,
+                place = schedule.place,
                 note = request.note,
                 createdByUser = currentUser,
             ),
@@ -106,6 +132,31 @@ class MeetingService(
         clubService.ensureMember(clubId, currentUser.id)
         return meetingRepository.findAllByClubIdAndMeetingDateBetweenOrderByMeetingDateAsc(clubId, from, to)
             .map { it.toResponse() }
+    }
+
+    @Transactional
+    fun updateMeeting(meetingId: UUID, currentUser: AppUserEntity, request: UpdateMeetingRequest): MeetingResponse {
+        val meeting = findMeeting(meetingId)
+        clubService.ensureAdmin(meeting.club.id, currentUser.id)
+        val schedule = meetingScheduleRepository.findByIdAndClubId(request.scheduleId, meeting.club.id)
+            ?: throw IllegalArgumentException("meeting schedule not found: ${request.scheduleId}")
+        validateMeetingDateBySchedule(schedule.dayOfWeek, request.meetingDate)
+
+        meeting.schedule = schedule
+        meeting.meetingDate = request.meetingDate
+        meeting.startTime = schedule.startTime
+        meeting.place = schedule.place
+        meeting.note = request.note?.trim()?.ifBlank { null }
+
+        val saved = meetingRepository.save(meeting)
+        return saved.toResponse()
+    }
+
+    @Transactional
+    fun deleteMeeting(meetingId: UUID, currentUser: AppUserEntity) {
+        val meeting = findMeeting(meetingId)
+        clubService.ensureAdmin(meeting.club.id, currentUser.id)
+        meetingRepository.delete(meeting)
     }
 
     @Transactional
@@ -212,9 +263,12 @@ class MeetingService(
 
     private fun MeetingScheduleEntity.toResponse(): MeetingScheduleResponse {
         return MeetingScheduleResponse(
+            id = id ?: throw IllegalStateException("meeting schedule id is null"),
             clubId = club.id,
+            name = name,
             dayOfWeek = dayOfWeek,
             startTime = startTime,
+            place = place,
             enabled = enabled,
         )
     }
@@ -223,8 +277,11 @@ class MeetingService(
         return MeetingResponse(
             id = id,
             clubId = club.id,
+            scheduleId = schedule?.id,
+            scheduleName = schedule?.name,
             meetingDate = meetingDate,
             startTime = startTime,
+            place = place,
             note = note,
             attendances = attendances.map {
                 MeetingAttendanceResponse(
@@ -236,5 +293,17 @@ class MeetingService(
                 )
             },
         )
+    }
+
+    private fun validateMeetingDateBySchedule(dayOfWeek: DayOfWeek, meetingDate: LocalDate) {
+        if (meetingDate.dayOfWeek != dayOfWeek) {
+            throw IllegalArgumentException("meetingDate must match schedule dayOfWeek")
+        }
+
+        val today = LocalDate.now()
+        val lastAllowed = today.plusDays(31)
+        if (meetingDate.isBefore(today) || meetingDate.isAfter(lastAllowed)) {
+            throw IllegalArgumentException("meetingDate must be within 1 month from today")
+        }
     }
 }

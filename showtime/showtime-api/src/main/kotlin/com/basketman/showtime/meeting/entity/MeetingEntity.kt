@@ -27,11 +27,18 @@ class MeetingEntity(
     @JoinColumn(name = "club_id", nullable = false)
     val club: ClubEntity,
 
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "schedule_id")
+    var schedule: MeetingScheduleEntity? = null,
+
     @Column(name = "meeting_date", nullable = false)
-    val meetingDate: LocalDate,
+    var meetingDate: LocalDate,
 
     @Column(name = "start_time", nullable = false)
-    val startTime: LocalTime,
+    var startTime: LocalTime,
+
+    @Column(name = "place", length = 255)
+    var place: String? = null,
 
     @Column(columnDefinition = "text")
     var note: String? = null,

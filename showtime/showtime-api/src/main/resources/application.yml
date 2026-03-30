@@ -2,9 +2,9 @@ spring:
   application:
     name: showtime
   datasource:
-    url: ${DB_URL:jdbc:postgresql://localhost:5432/showtime}
-    username: ${DB_USERNAME:showtime}
-    password: ${DB_PASSWORD:showtime}
+    url: ${DB_URL:jdbc:postgresql://localhost:5432/postgres}
+    username: ${DB_USERNAME:postgres}
+    password: ${DB_PASSWORD:1115}
   jpa:
     open-in-view: false
     hibernate:
@@ -21,7 +21,7 @@ spring:
       client:
         registration:
           google:
-            client-id: ${GOOGLE_CLIENT_ID:364547942373-iuus86rnhhp131bmkv2ja1e2nsftcg4r.apps.googleusercontent.com}
+            client-id: ${GOOGLE_CLIENT_ID}
             client-secret: ${GOOGLE_CLIENT_SECRET}
             scope:
               - profile
@@ -37,11 +37,14 @@ management:
         include: health,info
 
 app:
+  auth:
+    login-success-redirect-url: ${LOGIN_SUCCESS_REDIRECT_URL:http://localhost:5173}
   cors:
     allowed-origins:
-      - ${FRONTEND_ORIGIN:http://localhost:3000}
+      - ${FRONTEND_ORIGIN:http://localhost:5173}
+      - http://localhost:3000
   invite:
-    base-url: ${INVITE_BASE_URL:http://localhost:3000/join}
+    base-url: ${INVITE_BASE_URL:http://localhost:5173/join}
     expires-hours: ${INVITE_EXPIRES_HOURS:168}
   video:
     storage-dir: ${VIDEO_STORAGE_DIR:./storage/videos}

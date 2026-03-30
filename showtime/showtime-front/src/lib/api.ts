@@ -42,17 +42,30 @@ export const createInvite = async (clubId: string) => {
   return data
 }
 
-export const getMeetingSchedule = async (clubId: string) => {
-  const { data } = await api.get<MeetingScheduleResponse | null>(`/api/v1/clubs/${clubId}/meeting-schedule`)
+export const getMeetingSchedules = async (clubId: string) => {
+  const { data } = await api.get<MeetingScheduleResponse[]>(`/api/v1/clubs/${clubId}/meeting-schedules`)
   return data
 }
 
-export const upsertMeetingSchedule = async (
+export const createMeetingSchedule = async (
   clubId: string,
-  payload: { dayOfWeek: MeetingScheduleResponse['dayOfWeek']; startTime: string; enabled: boolean },
+  payload: { name: string; dayOfWeek: MeetingScheduleResponse['dayOfWeek']; startTime: string; place?: string; enabled: boolean },
 ) => {
-  const { data } = await api.put<MeetingScheduleResponse>(`/api/v1/clubs/${clubId}/meeting-schedule`, payload)
+  const { data } = await api.post<MeetingScheduleResponse>(`/api/v1/clubs/${clubId}/meeting-schedules`, payload)
   return data
+}
+
+export const updateMeetingSchedule = async (
+  clubId: string,
+  scheduleId: number,
+  payload: { name: string; dayOfWeek: MeetingScheduleResponse['dayOfWeek']; startTime: string; place?: string; enabled: boolean },
+) => {
+  const { data } = await api.put<MeetingScheduleResponse>(`/api/v1/clubs/${clubId}/meeting-schedules/${scheduleId}`, payload)
+  return data
+}
+
+export const deleteMeetingSchedule = async (clubId: string, scheduleId: number) => {
+  await api.delete(`/api/v1/clubs/${clubId}/meeting-schedules/${scheduleId}`)
 }
 
 export const getMeetings = async (clubId: string, from: string, to: string) => {
@@ -62,10 +75,22 @@ export const getMeetings = async (clubId: string, from: string, to: string) => {
 
 export const createMeeting = async (
   clubId: string,
-  payload: { meetingDate: string; startTime?: string; note?: string },
+  payload: { scheduleId: number; meetingDate: string; note?: string },
 ) => {
   const { data } = await api.post<MeetingResponse>(`/api/v1/clubs/${clubId}/meetings`, payload)
   return data
+}
+
+export const updateMeeting = async (
+  meetingId: string,
+  payload: { scheduleId: number; meetingDate: string; note?: string },
+) => {
+  const { data } = await api.put<MeetingResponse>(`/api/v1/meetings/${meetingId}`, payload)
+  return data
+}
+
+export const deleteMeeting = async (meetingId: string) => {
+  await api.delete(`/api/v1/meetings/${meetingId}`)
 }
 
 export const voteMyAttendance = async (meetingId: string, status: 'YES' | 'NO' | 'MAYBE') => {

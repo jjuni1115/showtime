@@ -29,9 +29,12 @@ export interface InviteResponse {
 }
 
 export interface MeetingScheduleResponse {
+  id: number
   clubId: string
+  name: string
   dayOfWeek: 'MONDAY' | 'TUESDAY' | 'WEDNESDAY' | 'THURSDAY' | 'FRIDAY' | 'SATURDAY' | 'SUNDAY'
   startTime: string
+  place: string | null
   enabled: boolean
 }
 
@@ -46,8 +49,11 @@ export interface MeetingAttendanceResponse {
 export interface MeetingResponse {
   id: string
   clubId: string
+  scheduleId: number | null
+  scheduleName: string | null
   meetingDate: string
   startTime: string
+  place: string | null
   note: string | null
   attendances: MeetingAttendanceResponse[]
 }

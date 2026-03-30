@@ -5,5 +5,6 @@ import org.springframework.data.jpa.repository.JpaRepository
 import java.util.UUID
 
 interface MeetingScheduleRepository : JpaRepository<MeetingScheduleEntity, Long> {
-    fun findByClubId(clubId: UUID): MeetingScheduleEntity?
+    fun findAllByClubIdOrderByIdAsc(clubId: UUID): List<MeetingScheduleEntity>
+    fun findByIdAndClubId(id: Long, clubId: UUID): MeetingScheduleEntity?
 }

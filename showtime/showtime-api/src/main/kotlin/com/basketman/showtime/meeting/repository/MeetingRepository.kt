@@ -7,9 +7,9 @@ import java.time.LocalDate
 import java.util.UUID
 
 interface MeetingRepository : JpaRepository<MeetingEntity, UUID> {
-    @EntityGraph(attributePaths = ["attendances", "attendances.user"])
+    @EntityGraph(attributePaths = ["schedule", "attendances", "attendances.user"])
     fun findAllByClubIdAndMeetingDateBetweenOrderByMeetingDateAsc(clubId: UUID, from: LocalDate, to: LocalDate): List<MeetingEntity>
 
-    @EntityGraph(attributePaths = ["attendances", "attendances.user"])
+    @EntityGraph(attributePaths = ["schedule", "attendances", "attendances.user"])
     override fun findById(id: UUID): java.util.Optional<MeetingEntity>
 }

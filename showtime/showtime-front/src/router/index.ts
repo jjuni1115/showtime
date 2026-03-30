@@ -4,6 +4,7 @@ const router = createRouter({
   history: createWebHistory(),
   routes: [
     { path: '/', redirect: '/dashboard' },
+    { path: '/join', component: () => import('@/pages/JoinPage.vue') },
     { path: '/dashboard', component: () => import('@/pages/DashboardPage.vue') },
     { path: '/club', component: () => import('@/pages/ClubPage.vue') },
     { path: '/meetings', component: () => import('@/pages/MeetingsPage.vue') },
