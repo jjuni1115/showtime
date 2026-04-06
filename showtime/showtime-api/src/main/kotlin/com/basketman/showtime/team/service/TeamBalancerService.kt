@@ -8,6 +8,7 @@ import com.basketman.showtime.team.dto.TeamGenerateResponse
 import com.basketman.showtime.team.dto.TeamResult
 import org.springframework.stereotype.Service
 import kotlin.math.abs
+import kotlin.math.pow
 
 @Service
 class TeamBalancerService {
@@ -37,6 +38,12 @@ class TeamBalancerService {
             }
             chosen.members.add(member)
         }
+
+        optimizeBySwap(
+            teamStates = teamStates,
+            previousTeamByMemberId = request.previousTeamByMemberId,
+            overallPositionCounts = overallPositionCounts,
+        )
 
         val teamResults = teamStates.map { state ->
             val repeatedCount = state.members.count { member ->
@@ -103,6 +110,94 @@ class TeamBalancerService {
         val baseSize = attendeeCount / teamCount
         val extra = attendeeCount % teamCount
         return List(teamCount) { index -> if (index < extra) baseSize + 1 else baseSize }
+    }
+
+    private fun optimizeBySwap(
+        teamStates: List<MutableTeamState>,
+        previousTeamByMemberId: Map<String, String>,
+        overallPositionCounts: Map<Position, Int>,
+    ) {
+        if (teamStates.size < 2) return
+
+        var currentScore = balanceScore(teamStates, previousTeamByMemberId, overallPositionCounts)
+        repeat(8) {
+            var improved = false
+            var bestI = -1
+            var bestJ = -1
+            var bestMi = -1
+            var bestMj = -1
+            var bestScore = currentScore
+
+            for (i in 0 until teamStates.size - 1) {
+                for (j in i + 1 until teamStates.size) {
+                    val left = teamStates[i]
+                    val right = teamStates[j]
+                    for (mi in left.members.indices) {
+                        for (mj in right.members.indices) {
+                            swapMembers(left, mi, right, mj)
+                            val candidateScore = balanceScore(teamStates, previousTeamByMemberId, overallPositionCounts)
+                            if (candidateScore < bestScore) {
+                                bestScore = candidateScore
+                                bestI = i
+                                bestJ = j
+                                bestMi = mi
+                                bestMj = mj
+                                improved = true
+                            }
+                            swapMembers(left, mi, right, mj)
+                        }
+                    }
+                }
+            }
+
+            if (!improved) return
+            swapMembers(teamStates[bestI], bestMi, teamStates[bestJ], bestMj)
+            currentScore = bestScore
+        }
+    }
+
+    private fun swapMembers(left: MutableTeamState, leftIndex: Int, right: MutableTeamState, rightIndex: Int) {
+        val leftMember = left.members[leftIndex]
+        left.members[leftIndex] = right.members[rightIndex]
+        right.members[rightIndex] = leftMember
+    }
+
+    private fun balanceScore(
+        teamStates: List<MutableTeamState>,
+        previousTeamByMemberId: Map<String, String>,
+        overallPositionCounts: Map<Position, Int>,
+    ): Double {
+        val teamCount = teamStates.size
+        val skillTotals = teamStates.map { it.totalSkill().toDouble() }
+        val avgHeights = teamStates.map { it.averageHeight() }
+        val sizeList = teamStates.map { it.members.size.toDouble() }
+
+        val skillVar = variance(skillTotals)
+        val heightVar = variance(avgHeights)
+        val sizeVar = variance(sizeList)
+
+        val positionPenalty = teamStates.sumOf { state ->
+            Position.entries.sumOf { position ->
+                val desired = (overallPositionCounts[position] ?: 0).toDouble() / teamCount
+                abs(state.members.count { it.position == position } - desired)
+            }
+        }
+
+        val repeatedPenalty = teamStates.sumOf { state ->
+            state.members.count { member -> previousTeamByMemberId[member.id] == state.name }.toDouble()
+        }
+
+        return skillVar * 5.0 +
+            heightVar * 0.12 +
+            sizeVar * 6.5 +
+            positionPenalty * 2.6 +
+            repeatedPenalty * 4.5
+    }
+
+    private fun variance(values: List<Double>): Double {
+        if (values.isEmpty()) return 0.0
+        val mean = values.average()
+        return values.sumOf { (it - mean).pow(2) } / values.size
     }
 }
 

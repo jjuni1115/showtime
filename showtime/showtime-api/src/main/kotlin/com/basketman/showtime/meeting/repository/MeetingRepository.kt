@@ -12,4 +12,14 @@ interface MeetingRepository : JpaRepository<MeetingEntity, UUID> {
 
     @EntityGraph(attributePaths = ["schedule", "attendances", "attendances.user"])
     override fun findById(id: UUID): java.util.Optional<MeetingEntity>
+
+    fun findFirstByScheduleIdAndMeetingDateBeforeOrderByMeetingDateDescStartTimeDesc(
+        scheduleId: Long,
+        meetingDate: LocalDate,
+    ): MeetingEntity?
+
+    fun findFirstByClubIdAndMeetingDateBeforeOrderByMeetingDateDescStartTimeDesc(
+        clubId: UUID,
+        meetingDate: LocalDate,
+    ): MeetingEntity?
 }

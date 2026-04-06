@@ -122,9 +122,9 @@ export const getMembers = async () => {
 }
 
 export const generateTeamsFromAttendance = async (payload: {
+  meetingId?: string
   attendanceDate: string
   teamNames: string[]
-  previousTeamByMemberId: Record<string, string>
 }) => {
   const { data } = await api.post<TeamGenerateResponse>('/api/v1/teams/generate-from-attendance', payload)
   return data

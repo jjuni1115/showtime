@@ -27,6 +27,7 @@ import org.springframework.transaction.annotation.Transactional
 import java.time.DayOfWeek
 import java.time.Instant
 import java.time.LocalDate
+import java.time.LocalDateTime
 import java.util.UUID
 
 @Service
@@ -163,6 +164,7 @@ class MeetingService(
     fun voteMyAttendance(meetingId: UUID, currentUser: AppUserEntity, request: VoteAttendanceRequest): MeetingResponse {
         val meeting = findMeeting(meetingId)
         clubService.ensureMember(meeting.club.id, currentUser.id)
+        ensureAttendanceEditable(meeting)
 
         val existing = meetingAttendanceRepository.findByMeetingIdAndUserId(meetingId, currentUser.id)
         if (existing == null) {
@@ -191,6 +193,7 @@ class MeetingService(
     fun setGuestAttendance(meetingId: UUID, currentUser: AppUserEntity, request: SetGuestAttendanceRequest): MeetingResponse {
         val meeting = findMeeting(meetingId)
         clubService.ensureAdmin(meeting.club.id, currentUser.id)
+        ensureAttendanceEditable(meeting)
 
         val guest = request.guestName.trim()
         if (guest.isBlank()) {
@@ -224,6 +227,7 @@ class MeetingService(
     fun setMemberAttendance(meetingId: UUID, currentUser: AppUserEntity, request: SetMemberAttendanceRequest): MeetingResponse {
         val meeting = findMeeting(meetingId)
         clubService.ensureAdmin(meeting.club.id, currentUser.id)
+        ensureAttendanceEditable(meeting)
 
         val member = appUserRepository.findById(request.userId)
             .orElseThrow { IllegalArgumentException("user not found: ${request.userId}") }
@@ -304,6 +308,13 @@ class MeetingService(
         val lastAllowed = today.plusDays(31)
         if (meetingDate.isBefore(today) || meetingDate.isAfter(lastAllowed)) {
             throw IllegalArgumentException("meetingDate must be within 1 month from today")
+        }
+    }
+
+    private fun ensureAttendanceEditable(meeting: MeetingEntity) {
+        val meetingDateTime = LocalDateTime.of(meeting.meetingDate, meeting.startTime)
+        if (meetingDateTime.isBefore(LocalDateTime.now())) {
+            throw IllegalArgumentException("attendance update is closed for past meetings")
         }
     }
 }

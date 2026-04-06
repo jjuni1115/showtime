@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { useConsole } from '@/composables/useConsole'
 
-const { loading, attendanceDate, teamNamesInput, teamResult, submitTeamGenerate } = useConsole()
+const { loading, attendanceDate, selectedTeamMeetingId, teamMeetingOptions, teamColorOptions, selectedTeamColors, teamResult, submitTeamGenerate } = useConsole()
 </script>
 
 <template>
@@ -11,8 +11,21 @@ const { loading, attendanceDate, teamNamesInput, teamResult, submitTeamGenerate 
       <p class="mt-1 text-xs text-slate-500">참석 데이터가 등록된 날짜를 기준으로 분배합니다.</p>
 
       <div class="mt-4 space-y-3">
-        <input v-model="attendanceDate" class="field-input" type="date" />
-        <input v-model="teamNamesInput" class="field-input" placeholder="Blue, Black, White" />
+        <select v-model="selectedTeamMeetingId" class="field-input">
+          <option value="" disabled>회차 선택</option>
+          <option v-for="meeting in teamMeetingOptions" :key="meeting.id" :value="meeting.id">{{ meeting.label }}</option>
+        </select>
+        <input v-model="attendanceDate" class="field-input" type="date" disabled />
+        <div class="grid grid-cols-2 gap-2">
+          <label
+            v-for="color in teamColorOptions"
+            :key="color.key"
+            class="flex items-center gap-2 rounded-xl border border-slate-200 bg-slate-50 px-3 py-2 text-sm text-slate-700"
+          >
+            <input v-model="selectedTeamColors" type="checkbox" :value="color.key" />
+            {{ color.label }}
+          </label>
+        </div>
         <button class="btn-primary w-full" :disabled="loading" @click="submitTeamGenerate">편성 실행</button>
       </div>
     </article>

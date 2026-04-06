@@ -5,9 +5,10 @@ import { useConsole } from '@/composables/useConsole'
 const {
   loading,
   matches,
-  matchPlayedAt,
+  selectedMatchMeetingId,
+  finishedMeetingOptions,
   matchMemo,
-  matchScoresInput,
+  matchTeamScores,
   selectedMatchId,
   selectedMatch,
   selectedVideoFile,
@@ -24,8 +25,16 @@ const selectedVideoName = computed(() => selectedVideoFile.value?.name || '선�
     <article class="surface p-5">
       <h2 class="section-title">경기 결과 등록</h2>
       <div class="mt-3 space-y-2">
-        <input v-model="matchPlayedAt" class="field-input" type="date" />
-        <input v-model="matchScoresInput" class="field-input" placeholder="Blue:21, Black:18, White:16" />
+        <select v-model="selectedMatchMeetingId" class="field-input">
+          <option value="" disabled>종료된 회차 선택</option>
+          <option v-for="meeting in finishedMeetingOptions" :key="meeting.id" :value="meeting.id">{{ meeting.label }}</option>
+        </select>
+        <div class="space-y-2 rounded-xl border border-slate-200 bg-slate-50 p-3">
+          <div v-for="(score, teamName) in matchTeamScores" :key="teamName" class="grid grid-cols-[1fr_120px] items-center gap-2">
+            <p class="text-sm font-medium text-slate-700">{{ teamName }}</p>
+            <input v-model.number="matchTeamScores[teamName]" class="field-input !py-2" type="number" min="0" />
+          </div>
+        </div>
         <input v-model="matchMemo" class="field-input" placeholder="메모" />
         <button class="btn-primary w-full" :disabled="loading" @click="submitCreateMatch">경기 저장</button>
       </div>

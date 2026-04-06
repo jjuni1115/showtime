@@ -57,7 +57,19 @@ const pendingInviteRedirectKey = 'showtime.pending_invite_redirect'
 
 const members = ref<MemberResponse[]>([])
 const attendanceDate = ref(new Date().toISOString().slice(0, 10))
-const teamNamesInput = ref('Blue, Black, White')
+const teamColorOptions = [
+  { key: 'Blue', label: '블루' },
+  { key: 'Black', label: '블랙' },
+  { key: 'White', label: '화이트' },
+  { key: 'Red', label: '레드' },
+  { key: 'Green', label: '그린' },
+  { key: 'Yellow', label: '옐로우' },
+  { key: 'Orange', label: '오렌지' },
+  { key: 'Purple', label: '퍼플' },
+] as const
+const selectedTeamColors = ref<string[]>(['Blue', 'Black', 'White'])
+const selectedTeamMeetingId = ref('')
+const generatedTeamNamesByMeetingId = ref<Record<string, string[]>>({})
 const teamResult = ref<TeamGenerateResponse | null>(null)
 
 const meetingSchedules = ref<MeetingScheduleResponse[]>([])
@@ -86,9 +98,9 @@ const posts = ref<PostResponse[]>([])
 const postContent = ref('')
 
 const matches = ref<MatchResultResponse[]>([])
-const matchPlayedAt = ref(new Date().toISOString().slice(0, 10))
 const matchMemo = ref('')
-const matchScoresInput = ref('Blue:21, Black:18, White:16')
+const selectedMatchMeetingId = ref('')
+const matchTeamScores = ref<Record<string, number>>({})
 const selectedMatchId = ref('')
 const selectedVideoFile = ref<File | null>(null)
 
@@ -98,6 +110,8 @@ const selectedMatch = computed(() => matches.value.find((match) => match.id === 
 const selectedSchedule = computed(() =>
   meetingSchedules.value.find((schedule) => schedule.id === selectedScheduleId.value) ?? null,
 )
+const selectedTeamMeeting = computed(() => meetings.value.find((meeting) => meeting.id === selectedTeamMeetingId.value) ?? null)
+const selectedMatchMeeting = computed(() => meetings.value.find((meeting) => meeting.id === selectedMatchMeetingId.value) ?? null)
 
 const dayOfWeekOptions: Array<{ value: MeetingScheduleResponse['dayOfWeek']; label: string }> = [
   { value: 'MONDAY', label: '월요일' },
@@ -141,6 +155,23 @@ const avgHeight = computed(() => {
 const yesCount = computed(() => selectedMeeting.value?.attendances.filter((it) => it.status === 'YES').length ?? 0)
 const maybeCount = computed(() => selectedMeeting.value?.attendances.filter((it) => it.status === 'MAYBE').length ?? 0)
 const noCount = computed(() => selectedMeeting.value?.attendances.filter((it) => it.status === 'NO').length ?? 0)
+const teamMeetingOptions = computed(() =>
+  meetings.value.map((meeting) => ({
+    id: meeting.id,
+    label: `${getMeetingLabel(meeting)} - ${meeting.attendances.filter((it) => it.status === 'YES').length}명`,
+  })),
+)
+const finishedMeetingOptions = computed(() =>
+  meetings.value
+    .filter((meeting) => {
+      const end = new Date(`${meeting.meetingDate}T${meeting.startTime}`)
+      return end.getTime() < Date.now()
+    })
+    .map((meeting) => ({
+      id: meeting.id,
+      label: `${getMeetingLabel(meeting)} - ${meeting.attendances.filter((it) => it.status === 'YES').length}명`,
+    })),
+)
 
 const filteredAttendances = computed(() => {
   if (!selectedMeeting.value) return []
@@ -254,6 +285,8 @@ const refreshClubScopedData = async () => {
     meetings.value = []
     posts.value = []
     selectedMeetingId.value = ''
+    selectedTeamMeetingId.value = ''
+    selectedMatchMeetingId.value = ''
     return
   }
 
@@ -292,6 +325,9 @@ const refreshClubScopedData = async () => {
 
   if (meetingList.length && !selectedMeetingId.value) {
     selectedMeetingId.value = meetingList[0].id
+  }
+  if (meetingList.length && !selectedTeamMeetingId.value) {
+    selectedTeamMeetingId.value = meetingList[0].id
   }
 }
 
@@ -411,22 +447,28 @@ const copyInvite = async () => {
 }
 
 const submitTeamGenerate = async () => {
-  const teamNames = teamNamesInput.value
-    .split(',')
-    .map((name) => name.trim())
-    .filter(Boolean)
+  if (!selectedTeamMeeting.value) {
+    error.value = '팀 편성할 회차를 선택해주세요.'
+    return false
+  }
+  const teamNames = [...new Set(selectedTeamColors.value.map((name) => name.trim()).filter(Boolean))]
 
-  if (!teamNames.length) {
-    error.value = '팀명을 하나 이상 입력해주세요.'
+  if (teamNames.length < 2) {
+    error.value = '팀 컬러를 최소 2개 선택해주세요.'
     return false
   }
 
   await run(async () => {
+    attendanceDate.value = selectedTeamMeeting.value?.meetingDate || attendanceDate.value
     teamResult.value = await generateTeamsFromAttendance({
-      attendanceDate: attendanceDate.value,
+      meetingId: selectedTeamMeeting.value!.id,
+      attendanceDate: selectedTeamMeeting.value!.meetingDate,
       teamNames,
-      previousTeamByMemberId: {},
     })
+    generatedTeamNamesByMeetingId.value = {
+      ...generatedTeamNamesByMeetingId.value,
+      [selectedTeamMeeting.value!.id]: teamResult.value.teams.map((it) => it.name),
+    }
   })
   return !error.value
 }
@@ -598,29 +640,28 @@ const submitPost = async () => {
 }
 
 const submitCreateMatch = async () => {
-  const scores: Record<string, number> = {}
-  matchScoresInput.value
-    .split(',')
-    .map((token) => token.trim())
-    .filter(Boolean)
-    .forEach((token) => {
-      const [name, score] = token.split(':').map((v) => v.trim())
-      if (!name || !score) return
-      const parsed = Number(score)
-      if (Number.isNaN(parsed)) return
-      scores[name] = parsed
-    })
+  if (!selectedMatchMeeting.value) {
+    error.value = '종료된 회차를 선택해주세요.'
+    return false
+  }
+
+  const scores = Object.entries(matchTeamScores.value)
+    .filter(([name]) => name.trim().length > 0)
+    .reduce<Record<string, number>>((acc, [name, score]) => {
+      acc[name] = Number(score) || 0
+      return acc
+    }, {})
 
   if (!Object.keys(scores).length) {
-    error.value = '점수 형식이 올바르지 않습니다. 예: Blue:21, Black:18'
+    error.value = '팀 점수를 입력해주세요.'
     return false
   }
 
   await run(async () => {
     const created = await createMatch({
-      playedAt: matchPlayedAt.value,
+      playedAt: selectedMatchMeeting.value!.meetingDate,
       teamScores: scores,
-      memo: matchMemo.value || undefined,
+      memo: `${selectedMatchMeeting.value!.meetingDate} ${selectedMatchMeeting.value!.startTime} ${selectedMatchMeeting.value!.scheduleName || ''} ${matchMemo.value}`.trim() || undefined,
     })
     matches.value = [created, ...matches.value]
     selectedMatchId.value = created.id
@@ -686,6 +727,34 @@ watch(
   { immediate: true },
 )
 
+watch(
+  finishedMeetingOptions,
+  (options) => {
+    if (!selectedMatchMeetingId.value && options.length) {
+      selectedMatchMeetingId.value = options[0].id
+    }
+  },
+  { immediate: true },
+)
+
+watch(
+  selectedMatchMeeting,
+  (meeting) => {
+    if (!meeting) {
+      matchTeamScores.value = {}
+      return
+    }
+    const teamNames =
+      generatedTeamNamesByMeetingId.value[meeting.id] ||
+      [...new Set(selectedTeamColors.value.map((it) => it.trim()).filter(Boolean))]
+    matchTeamScores.value = teamNames.reduce<Record<string, number>>((acc, name) => {
+      acc[name] = matchTeamScores.value[name] ?? 0
+      return acc
+    }, {})
+  },
+  { immediate: true },
+)
+
 const onSelectRegularMeetingDate = (date: string) => {
   selectedRegularMeetingDate.value = date
   meetingDate.value = date
@@ -709,7 +778,10 @@ export const useConsole = () => {
     consumePendingInviteRedirect,
     members,
     attendanceDate,
-    teamNamesInput,
+    teamColorOptions,
+    selectedTeamColors,
+    selectedTeamMeetingId,
+    teamMeetingOptions,
     teamResult,
     meetingSchedules,
     selectedScheduleId,
@@ -736,9 +808,10 @@ export const useConsole = () => {
     posts,
     postContent,
     matches,
-    matchPlayedAt,
     matchMemo,
-    matchScoresInput,
+    selectedMatchMeetingId,
+    finishedMeetingOptions,
+    matchTeamScores,
     selectedMatchId,
     selectedMatch,
     selectedVideoFile,
